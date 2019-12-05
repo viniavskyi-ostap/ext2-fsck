@@ -34,8 +34,8 @@ public:
         ext2_inode root = getInode(2);
         std::cout << root.i_blocks << std::endl;
         std::cout << root.i_block[0] << std::endl;
-        std::cout << root.i_block[1] << std::endl;
         File file{image, root};
+        file.readDirectory(image);
         std::cout << std::get<0>(file.children[0]) << std::endl;
 
 

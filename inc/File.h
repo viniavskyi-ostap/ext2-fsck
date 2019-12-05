@@ -21,7 +21,7 @@ public:
         uint32_t block_count = std::ceil((double) inode.i_size / image.block_size);
         std::vector<uint32_t> blocks(block_count);
 
-        for (size_t i = 0; i < block_count - 1 && i < EXT2_NDIR_BLOCKS; ++i) {
+        for (size_t i = 0; i < block_count && i < EXT2_NDIR_BLOCKS; ++i) {
             blocks[i] = inode.i_block[i];
         }
         // TODO handle indirect blocks
@@ -29,22 +29,12 @@ public:
         return blocks;
     }
 
-//    void readFile(FilesystemImage& image, char* buffer, uint32_t start_offset, uint32_t end_offset) {
-//        uint32_t buffer_offset;
-//
-//        uint32_t start_block_i = start_offset / image.block_size;
-//        image.istream.seekg(blocks[start_block_i] * image.block_size + );
-//        image.istream.read(buffer[0], )
-//        for (uint32_t i = start_offset; i < image.block_size; ++i) {
-//            buffer[buffer_offset++] = start_block_i[i];
-//        }
-//    }
-
     void readDirectory(FilesystemImage& image) {
         uint32_t block_i = 0;
         uint32_t inside_offset = 0;
+        char filename[EXT2_NAME_LEN + 1];
 
-        ext2_dir_entry entry;
+        ext2_dir_entry_2 entry;
         while(true) {
             if (inside_offset >= image.block_size) {
                 ++block_i;
@@ -55,9 +45,13 @@ public:
             image.istream.read((char *) &entry.inode, sizeof(entry.inode));
             image.istream.read((char *) &entry.rec_len, sizeof(entry.rec_len));
             image.istream.read((char *) &entry.name_len, sizeof(entry.name_len));
+            image.istream.read((char *) &entry.file_type, sizeof(entry.file_type));
             image.istream.read((char *) &entry.name, entry.name_len);
 
-            children.emplace_back(entry.name, entry.inode);
+            std::copy(entry.name, entry.name + entry.name_len, filename);
+            filename[entry.name_len] = '\0';
+
+            children.emplace_back(filename, entry.inode);
             inside_offset += entry.rec_len;
         }
 

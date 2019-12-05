@@ -1,6 +1,8 @@
 #ifndef EXT2_FSCK_FILESYSTEMIMAGE_H
 #define EXT2_FSCK_FILESYSTEMIMAGE_H
 
+#include <fstream>
+
 const uint64_t BOOT_SIZE = 1024;
 
 struct FilesystemImage {

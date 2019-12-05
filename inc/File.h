@@ -6,9 +6,11 @@
 #include <ext2fs/ext2_fs.h>
 #include <vector>
 
-#include "Filesystem.h"
+#include "FilesystemImage.h"
+
 
 class File {
+public:
     ext2_inode inode;
     std::vector<uint32_t> blocks;
 
@@ -19,7 +21,7 @@ class File {
         uint32_t block_count = std::ceil((double) inode.i_size / image.block_size);
         std::vector<uint32_t> blocks(block_count);
 
-        for (size_t i = 0; i < block_count && i < EXT2_NDIR_BLOCKS; ++i) {
+        for (size_t i = 0; i < block_count - 1 && i < EXT2_NDIR_BLOCKS; ++i) {
             blocks[i] = inode.i_block[i];
         }
         // TODO handle indirect blocks

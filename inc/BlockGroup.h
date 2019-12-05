@@ -17,7 +17,7 @@ public:
     BlockGroup(FilesystemImage &image, uint32_t i): image(image) {
         uint64_t offset = i == 0 ? BOOT_SIZE : image.blocks_per_group * image.block_size * i;
 
-        image.istream.seekg(offset);
+        image.istream.seekg(offset, std::ios::beg);
         image.istream.read((char*) &super, sizeof(super));
 
         // read the super block only for first group

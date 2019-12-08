@@ -18,5 +18,6 @@ sudo mount -t ext2 -o loop file /mnt/file
 mount -t ext2
 
 # unmount
+# save the filesystem to file
 sudo umount /mnt/file
 ```

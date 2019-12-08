@@ -48,15 +48,38 @@ public:
     using dir_entry_t = std::tuple<std::string, uint32_t>;
     std::vector<dir_entry_t> children;
 
+    void getIndirectBlocks(FilesystemImage& image, uint32_t block, uint32_t& blocks_found, uint32_t& block_count, int depth=1) {
+        for (int i = 0; i < image.block_size / sizeof(uint32_t); ++i) {
+            if (blocks_found >= block_count) return;
+
+            // TODO check the blocks
+            uint32_t value;
+            image.istream.seekg(block * image.block_size + i * sizeof(uint32_t), std::ios::beg);
+            image.istream.get((char *) &value, sizeof(value));
+
+            if (depth == 1) {
+                blocks.push_back(value);
+                ++block_count;
+            } else {
+                getIndirectBlocks(image, value, blocks_found, block_count, depth-1);
+            }
+        }
+    }
+
     std::vector<uint32_t> getBlocks(FilesystemImage& image) {
         uint32_t block_count = std::ceil((double) inode.i_size / image.block_size);
+        uint32_t blocks_found = 0;
         std::vector<uint32_t> blocks(block_count);
 
-        for (size_t i = 0; i < block_count && i < EXT2_NDIR_BLOCKS; ++i) {
-            blocks[i] = inode.i_block[i];
+        for (blocks_found = 0; blocks_found < block_count && blocks_found < EXT2_NDIR_BLOCKS; ++blocks_found) {
+            blocks[blocks_found] = inode.i_block[blocks_found];
         }
+
         // TODO handle indirect blocks
-        // TODO in the handling check the blocks
+        // TODO check the blocks
+        getIndirectBlocks(image, inode.i_block[EXT2_IND_BLOCK], blocks_found, block_count, 1);
+        getIndirectBlocks(image, inode.i_block[EXT2_DIND_BLOCK], blocks_found, block_count, 2);
+        getIndirectBlocks(image, inode.i_block[EXT2_TIND_BLOCK], blocks_found, block_count, 3);
 
         return blocks;
     }

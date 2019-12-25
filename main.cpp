@@ -4,9 +4,13 @@
 
 #include "Filesystem.h"
 
-int main() {
-    Filesystem fs{"../file"};
-    std::cout << fs << std::endl;
+int main(int argc, char** argv) {
+    if (argc < 2)
+        throw std::invalid_argument("Missing second argument: filesystem name");
+
+    Filesystem fs{argv[1]};
+
+    std::cout << fs << std::endl << std::endl;
     std::cout << fs.fileTreeString() << std::endl;
     std::cout << fs.getAllErrors() << std::endl;
 

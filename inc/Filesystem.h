@@ -25,18 +25,18 @@ public:
     std::vector<std::string> errors;
 
     ext2_inode getInode(uint32_t i);
+    void createFilesystemTree(INode& directory);
 
 public:
-    friend std::ostream& operator<<(std::ostream& out, Filesystem& fs);
+    Filesystem(std::string path);
 
-    void recurseDirectory(INode& directory);
+    friend std::ostream& operator<<(std::ostream& out, Filesystem& fs);
+    std::string getAllErrors();
 
     void __fileTreeStringOneDepth(INode& directory, int depth, std::ostringstream& out, std::unordered_set<uint32_t>& usedMap);
     std::string fileTreeString(INode& directory);
     std::string fileTreeString();
 
-    Filesystem(std::string path);
-    std::string getAllErrors();
 };
 
 

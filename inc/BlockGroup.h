@@ -14,7 +14,6 @@ public:
     FilesystemImage& image;
 
     ext2_super_block super;
-    ext2_group_desc group_desc;
     uint32_t inode_table_i;
     uint32_t inode_table_size;
 

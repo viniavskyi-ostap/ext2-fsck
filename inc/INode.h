@@ -36,14 +36,14 @@ public:
     void getIndirectBlocks(FilesystemImage& image, uint32_t block, uint32_t& blocks_found, uint32_t& block_count, int depth=1);
     std::vector<uint32_t> getBlocks(FilesystemImage& image);
 
-    void readDirectory(FilesystemImage& image);
-    void readSymLink(FilesystemImage &image);
-
 public:
-    friend std::ostream& operator<<(std::ostream& out, INode& file);
-
     INode() = default;
     INode(FilesystemImage& image, ext2_inode inode, unsigned int inode_i);
+
+    friend std::ostream& operator<<(std::ostream& out, INode& file);
+
+    void readDirectory(FilesystemImage& image);
+    void readSymLink(FilesystemImage &image);
 };
 
 #endif //EXT2_FSCK_INODE_H

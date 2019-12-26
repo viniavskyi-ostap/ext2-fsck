@@ -1,6 +1,8 @@
 #include "BlockGroup.h"
 
 BlockGroup::BlockGroup(FilesystemImage &image, uint32_t i): image(image) {
+        ext2_group_desc group_desc;
+
         uint64_t offset = i == 0 ? BOOT_SIZE : image.blocks_per_group * image.block_size * i;
 
         if (offset + sizeof(super) > image.filesystem_size) {

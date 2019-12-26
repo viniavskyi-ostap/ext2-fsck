@@ -8,27 +8,11 @@ ext2_inode Filesystem::getInode(uint32_t i) {
     return block_groups[i / image.inodes_per_group].getInode(i);
 }
 
-std::ostream& operator<<(std::ostream& out, Filesystem& fs) {
-    out << "[Filesystem" << std::endl;
-    out << "\tblock size: " << fs.image.block_size << std::endl;
-    out << "\tblocks number: " << fs.image.blocks_count << std::endl;
-    out << "\tblocks per group: " << fs.image.blocks_per_group << std::endl;
-    out << "\tgroups number: " << fs.block_groups.size() << std::endl;
-    out << "\tinode table size in blocks: " << fs.image.inodes_per_group * sizeof(ext2_inode) / fs.image.block_size << std::endl;
-    out << "]";
-    return out;
-};
-
-void Filesystem::recurseDirectory(INode& directory) {
+void Filesystem::createFilesystemTree(INode& directory) {
+    // recursive function to read the inodes and blocks of filesystem
     if (!directory.errors.empty()) return;
-
-    for (auto block: directory.blocks) {
-        if (image.block_usage[block])
-            directory.errors.push_back("Referencing already used block " + std::to_string(block));
-        image.block_usage[block] = true;
-    }
-
     if (directory.type != DIRECTORY) return;
+
     directory.readDirectory(image);
 
     for (auto &child: directory.children) {
@@ -41,12 +25,75 @@ void Filesystem::recurseDirectory(INode& directory) {
             inodes[inode_i] = INode(image, ext2Inode, inode_i);
             INode& inode = inodes[inode_i];
 
-            recurseDirectory(inode);
+            createFilesystemTree(inode);
         } catch(InvalidINode& e) {
             // invalid inode is not saved to inodes map
             directory.errors.push_back("Referencing invalid inode " + std::to_string(inode_i));
         }
     }
+}
+
+Filesystem::Filesystem(std::string path) {
+    // Open the filesystem as file
+    image.istream = std::ifstream{path, std::ios::binary};
+
+    image.istream.seekg(0, std::ios::end);
+    image.filesystem_size = image.istream.tellg();
+
+    // Create the block groups
+    block_groups.emplace_back(image, 0);
+
+    // Save the size of the filesystem
+    // TODO perform other super block checks
+
+    uint64_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
+    for (uint64_t i = 1; i < groups_count; ++i) {
+        block_groups.emplace_back(image, i);
+    }
+
+    if (!block_groups[0].errors.empty())
+        throw std::runtime_error("The filesystem cannot be read.");
+    // Root folder
+    inodes[ROOT_INODE_I] = INode{image, getInode(ROOT_INODE_I), ROOT_INODE_I};
+    // Recursively add all the inodes
+    createFilesystemTree(inodes[ROOT_INODE_I]);
+}
+
+std::ostream& operator<<(std::ostream& out, Filesystem& fs) {
+    out << "[Filesystem" << std::endl;
+    out << "\tblock size: " << fs.image.block_size << std::endl;
+    out << "\tblocks number: " << fs.image.blocks_count << std::endl;
+    out << "\tblocks per group: " << fs.image.blocks_per_group << std::endl;
+    out << "\tgroups number: " << fs.block_groups.size() << std::endl;
+    out << "\tinode table size in blocks: " << fs.image.inodes_per_group * sizeof(ext2_inode) / fs.image.block_size << std::endl;
+    out << "]";
+    return out;
+}
+
+std::string Filesystem::getAllErrors() {
+    std::ostringstream out;
+    int error_number = 0;
+
+    out << "ERRORS: " << std::endl;
+    for (auto& error: errors) {
+        out << "[Filesystem error] " << error << std::endl;
+        error_number += 1;
+    }
+    for (size_t i = 0; i < block_groups.size(); ++i) {
+        for (auto& error: block_groups[i].errors) {
+            out << "[Block Group " << i << " error] " << error << std::endl;
+            error_number += 1;
+        }
+    }
+    for (auto& inode: inodes) {
+        for (auto& error: inode.second.errors) {
+            out << "[Inode " << inode.first << " error] " << error << std::endl;
+            error_number += 1;
+        }
+    }
+
+    out << "Total number of errors = " <<  error_number;
+    return out.str();
 }
 
 void Filesystem::__fileTreeStringOneDepth(INode& directory, int depth, std::ostringstream& out, std::unordered_set<uint32_t>& usedMap) {
@@ -79,56 +126,3 @@ std::string Filesystem::fileTreeString() {
     return fileTreeString(inodes[ROOT_INODE_I]);
 }
 
-Filesystem::Filesystem(std::string path) {
-    // Open the filesystem as file
-    image.istream = std::ifstream{path, std::ios::binary};
-
-    image.istream.seekg(0, std::ios::end);
-    image.filesystem_size = image.istream.tellg();
-
-    // Create the block groups
-    block_groups.emplace_back(image, 0);
-
-    // Save the size of the filesystem
-    // TODO perform other super block checks
-
-    uint64_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
-    for (uint64_t i = 1; i < groups_count; ++i) {
-        block_groups.emplace_back(image, i);
-    }
-
-    // TODO check all other super blocks
-
-    if (!block_groups[0].errors.empty())
-    throw std::runtime_error("The filesystem cannot be read.");
-    // Root folder
-    inodes[ROOT_INODE_I] = INode{image, getInode(ROOT_INODE_I), ROOT_INODE_I};
-    // Recursively add all the inodes
-    recurseDirectory(inodes[ROOT_INODE_I]);
-}
-
-std::string Filesystem::getAllErrors() {
-    std::ostringstream out;
-    int error_number = 0;
-
-    out << "ERRORS: " << std::endl;
-    for (auto& error: errors) {
-        out << "[Filesystem error] " << error << std::endl;
-        error_number += 1;
-    }
-    for (size_t i = 0; i < block_groups.size(); ++i) {
-        for (auto& error: block_groups[i].errors) {
-            out << "[Block Group " << i << " error] " << error << std::endl;
-            error_number += 1;
-        }
-    }
-    for (auto& inode: inodes) {
-        for (auto& error: inode.second.errors) {
-            out << "[Inode " << inode.first << " error] " << error << std::endl;
-            error_number += 1;
-        }
-    }
-
-    out << "Total number of errors = " <<  error_number;
-    return out.str();
-}

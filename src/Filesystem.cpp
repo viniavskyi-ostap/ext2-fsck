@@ -22,6 +22,7 @@ void Filesystem::createFilesystemTree(INode& directory) {
         try {
             ext2_inode ext2Inode = getInode(inode_i);
 
+            std::cout << std::get<0>(child) << file_type_names[get_file_type(ext2Inode)] << std::endl;
             inodes[inode_i] = INode(image, ext2Inode, inode_i);
             INode& inode = inodes[inode_i];
 
@@ -118,15 +119,14 @@ void Filesystem::__fileTreeStringOneDepth(INode& directory, int depth, std::ostr
 
         usedMap.insert(std::get<1>(child));
         for (int j = 0; j < depth; ++j) out << "  ";
-        out << "\\" << std::get<0>(child) << std::endl;
         INode& inode = inodes[std::get<1>(child)];
+        out << "\\" << std::get<0>(child)  << " " << inode.shortInfo() << std::endl;
 
         if (inode.type == DIRECTORY) {
             __fileTreeStringOneDepth(inode, depth+1, out, usedMap);
         }
     }
 }
-
 std::string Filesystem::fileTreeString(INode& directory) {
     std::ostringstream out;
     if (directory.type != DIRECTORY)
@@ -137,6 +137,7 @@ std::string Filesystem::fileTreeString(INode& directory) {
     return out.str();
 }
 std::string Filesystem::fileTreeString() {
+    std::cout << "\\ " << inodes[2].shortInfo() << std::endl;
     return fileTreeString(inodes[ROOT_INODE_I]);
 }
 
@@ -160,9 +161,12 @@ int Filesystem::readSuperBlock(){
     image.block_size = EXT2_BLOCK_SIZE(&super);
     image.blocks_per_group = super.s_blocks_per_group;
     image.inodes_per_group = super.s_inodes_per_group;
+    image.reserved_group_description_blocks = super.s_reserved_gdt_blocks;
 
     image.inode_usage = std::vector<bool>(std::ceil(image.filesystem_size / image.inodes_per_group) * image.inodes_per_group);
-    image.inode_usage[0] = true;
+    // First 11 inodes are marked as reserved
+    for (uint32_t i = 0; i < 10; ++i) image.inode_usage[i] = true;
+    image.inode_usage[1] = false;
 
     // check if correct magick number
     return 0;
@@ -174,15 +178,17 @@ void Filesystem::initBlockUsageTable() {
     uint32_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
     uint32_t group_desc_blocks = std::ceil(double(sizeof(ext2_group_desc) * groups_count) / image.block_size);
 
+    // mark the boot
+    image.block_usage[0] = true;
+    uint32_t boot_offset = (image.block_size <= BOOT_SIZE) ? 1 : 0;
+
     // iterating through 0, 1, 3 ^ n, 5 ^ n, 7 ^ n
     for (auto num: std::vector<uint32_t>{0, 1, 3, 5, 7}) {
         uint32_t i = num;
         while (i < groups_count) {
-            // skip the boot + super if it is the first group
-            uint32_t super_size = (i == 0 && image.block_size <= BOOT_SIZE) ? 2 : 1;
-            // iterating through the super block and the group description table
-            for (uint32_t j = 0; j < group_desc_blocks + super_size; ++j)
-                image.block_usage[image.blocks_per_group * i + j] = true;
+            // mark the super block, the group description table and reserved gdt blocks
+            for (uint32_t j = 0; j <= group_desc_blocks + image.reserved_group_description_blocks; ++j)
+                image.block_usage[image.blocks_per_group * i + boot_offset + j] = true;
 
             if (num == 0 || num == 1) break;
             i *= num;

@@ -16,6 +16,8 @@ public:
     uint32_t block_group_i;
     uint32_t inode_table_i;
     uint32_t inode_table_size;
+    uint32_t block_bitmap_i;
+    uint32_t inode_bitmap_i;
 
     std::vector<std::string> errors;
 

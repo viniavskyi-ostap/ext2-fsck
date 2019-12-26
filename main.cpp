@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
         std::cout << fs << std::endl << std::endl;
         std::cout << fs.fileTreeString() << std::endl;
     }
-    std::cout << fs.getAllErrors().substr(0, 1000) << std::endl;
+    std::cout << fs.getAllErrors() << std::endl;
 
     return 0;
 }

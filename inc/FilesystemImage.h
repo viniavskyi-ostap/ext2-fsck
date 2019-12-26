@@ -14,6 +14,7 @@ struct FilesystemImage {
     uint64_t block_size;
     uint64_t blocks_per_group;
     uint32_t inodes_per_group;
+    uint32_t reserved_group_description_blocks;
 
     std::vector<bool> block_usage;
     std::vector<bool> inode_usage;

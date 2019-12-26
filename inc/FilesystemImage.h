@@ -16,6 +16,7 @@ struct FilesystemImage {
     uint32_t inodes_per_group;
 
     std::vector<bool> block_usage;
+    std::vector<bool> inode_usage;
 };
 
 #endif //EXT2_FSCK_FILESYSTEMIMAGE_H

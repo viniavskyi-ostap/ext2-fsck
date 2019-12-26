@@ -1,4 +1,5 @@
 #include "INode.h"
+#include <iostream>
 
 std::vector<std::string> file_type_names = {"unknown", "fifo", "character device", "directory", "block device", "regular", "symlink", "socket"};
 
@@ -31,6 +32,8 @@ INode::INode(FilesystemImage& image, ext2_inode inode, unsigned int inode_i):
             errors.push_back("Referencing already used block " + std::to_string(block));
         image.block_usage[block] = true;
     }
+
+    image.inode_usage[inode_i - 1] = true;
 
     type = get_file_type(inode);
 }

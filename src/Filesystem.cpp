@@ -37,10 +37,13 @@ Filesystem::Filesystem(std::string path) {
     // Open the filesystem as file
     image.istream = std::ifstream{path, std::ios::binary};
 
+    // Save the size of the filesystem
     image.istream.seekg(0, std::ios::end);
     image.filesystem_size = image.istream.tellg();
 
-    if (readSuperBlock() == 0){
+    if (readSuperBlock() == 0) {
+        initBlockUsageTable();
+
         // Create the block groups
         block_groups.emplace_back(image, 0);
 
@@ -55,9 +58,18 @@ Filesystem::Filesystem(std::string path) {
         if (!block_groups[0].errors.empty())
             throw std::runtime_error("The filesystem cannot be read.");
         // Root folder
-        inodes[ROOT_INODE_I] = INode{image, getInode(ROOT_INODE_I), ROOT_INODE_I};
+        inodes[ROOT_INODE_I] = INode{image, getInode(ROOT_INODE_I), 2};
         // Recursively add all the inodes
         createFilesystemTree(inodes[ROOT_INODE_I]);
+
+        for (size_t i = 0; i < image.block_usage.size(); ++i) {
+            std::cout << image.block_usage[i];
+        }
+        std::cout << std::endl;
+
+        for (uint64_t i = 0; i< groups_count; ++i) {
+            block_groups[i].additionalFieldsCheck();
+        }
     }
 }
 
@@ -149,9 +161,48 @@ int Filesystem::readSuperBlock(){
     image.blocks_per_group = super.s_blocks_per_group;
     image.inodes_per_group = super.s_inodes_per_group;
 
-    image.block_usage = std::vector<bool>(image.filesystem_size / image.block_size);
-    image.block_usage[0] = true;
+    image.inode_usage = std::vector<bool>(std::ceil(image.filesystem_size / image.inodes_per_group) * image.inodes_per_group);
+    image.inode_usage[0] = true;
 
     // check if correct magick number
+    return 0;
+}
+
+void Filesystem::initBlockUsageTable() {
+    image.block_usage = std::vector<bool>(image.filesystem_size / image.block_size);
+
+    uint32_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
+    uint32_t group_desc_blocks = std::ceil(double(sizeof(ext2_group_desc) * groups_count) / image.block_size);
+
+    // iterating through 0, 1, 3 ^ n, 5 ^ n, 7 ^ n
+    for (auto num: std::vector<uint32_t>{0, 1, 3, 5, 7}) {
+        uint32_t i = num;
+        while (i < groups_count) {
+            // skip the boot + super if it is the first group
+            uint32_t super_size = (i == 0 && image.block_size <= BOOT_SIZE) ? 2 : 1;
+            // iterating through the super block and the group description table
+            for (uint32_t j = 0; j < group_desc_blocks + super_size; ++j)
+                image.block_usage[image.blocks_per_group * i + j] = true;
+
+            if (num == 0 || num == 1) break;
+            i *= num;
+        }
+    }
+}
+
+int Filesystem::readBlockGroupTable() {
+    uint32_t groups_count = std::ceil(image.blocks_count) / image.blocks_per_group;
+    block_group_descriptions = std::vector<ext2_group_desc>(groups_count);
+
+    if (BOOT_SIZE + image.block_size + sizeof(ext2_group_desc) * groups_count > image.filesystem_size) {
+        errors.emplace_back("Groups description table out of filesystem");
+        return -1;
+    }
+
+    image.istream.seekg(BOOT_SIZE + image.block_size, std::ios::beg);
+    for (uint32_t i = 0; i < groups_count; ++i) {
+        image.istream.read((char *) &block_group_descriptions[i], sizeof(ext2_group_desc));
+    }
+
     return 0;
 }

@@ -9,3 +9,5 @@ add_library(filesystem src/Filesystem.cpp src/BlockGroup.cpp src/INode.cpp)
 add_executable(ext2-fsck main.cpp)
 target_link_libraries(ext2-fsck filesystem)
 
+add_executable(ext2-fsbreak break.cpp)
+target_link_libraries(ext2-fsbreak filesystem)

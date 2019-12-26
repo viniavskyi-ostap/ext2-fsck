@@ -20,11 +20,14 @@ class Filesystem {
 private:
     FilesystemImage image{};
     std::vector<BlockGroup> block_groups;
+    std::vector<ext2_group_desc> block_group_descriptions;
 
     std::unordered_map<uint32_t, INode> inodes;
     ext2_inode getInode(uint32_t i);
     void createFilesystemTree(INode& directory);
     int readSuperBlock();
+    void initBlockUsageTable();
+    int readBlockGroupTable();
 
 public:
     std::vector<std::string> errors;

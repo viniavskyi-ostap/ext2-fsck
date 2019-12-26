@@ -13,6 +13,7 @@ class BlockGroup {
 public:
     FilesystemImage& image;
 
+    uint32_t block_group_i;
     uint32_t inode_table_i;
     uint32_t inode_table_size;
 
@@ -22,6 +23,7 @@ public:
     BlockGroup(FilesystemImage &image, uint32_t i);
 
     ext2_inode getInode(uint32_t i);
+    void additionalFieldsCheck();
 };
 
 #endif //EXT2_FSCK_BLOCKGROUP_H

@@ -13,7 +13,6 @@ class BlockGroup {
 public:
     FilesystemImage& image;
 
-    ext2_super_block super;
     uint32_t inode_table_i;
     uint32_t inode_table_size;
 

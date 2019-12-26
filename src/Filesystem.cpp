@@ -40,23 +40,25 @@ Filesystem::Filesystem(std::string path) {
     image.istream.seekg(0, std::ios::end);
     image.filesystem_size = image.istream.tellg();
 
-    // Create the block groups
-    block_groups.emplace_back(image, 0);
+    if (readSuperBlock() == 0){
+        // Create the block groups
+        block_groups.emplace_back(image, 0);
 
-    // Save the size of the filesystem
-    // TODO perform other super block checks
+        // Save the size of the filesystem
+        // TODO perform other super block checks
 
-    uint64_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
-    for (uint64_t i = 1; i < groups_count; ++i) {
-        block_groups.emplace_back(image, i);
+        uint64_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
+        for (uint64_t i = 1; i < groups_count; ++i) {
+            block_groups.emplace_back(image, i);
+        }
+
+        if (!block_groups[0].errors.empty())
+            throw std::runtime_error("The filesystem cannot be read.");
+        // Root folder
+        inodes[ROOT_INODE_I] = INode{image, getInode(ROOT_INODE_I), ROOT_INODE_I};
+        // Recursively add all the inodes
+        createFilesystemTree(inodes[ROOT_INODE_I]);
     }
-
-    if (!block_groups[0].errors.empty())
-        throw std::runtime_error("The filesystem cannot be read.");
-    // Root folder
-    inodes[ROOT_INODE_I] = INode{image, getInode(ROOT_INODE_I), ROOT_INODE_I};
-    // Recursively add all the inodes
-    createFilesystemTree(inodes[ROOT_INODE_I]);
 }
 
 std::ostream& operator<<(std::ostream& out, Filesystem& fs) {
@@ -126,3 +128,30 @@ std::string Filesystem::fileTreeString() {
     return fileTreeString(inodes[ROOT_INODE_I]);
 }
 
+int Filesystem::readSuperBlock(){
+    ext2_super_block super;
+
+    if (BOOT_SIZE + sizeof(super) > image.filesystem_size) {
+        errors.emplace_back("Super block out of filesystem");
+        return -1;
+    }
+
+    image.istream.seekg(BOOT_SIZE, std::ios::beg);
+    image.istream.read((char *) &super, sizeof(super));
+
+    if (super.s_magic != EXT2_SUPER_MAGIC){
+        errors.emplace_back("Given file is not an EXT2 FS image");
+        return -2;
+    }
+
+    image.blocks_count = super.s_blocks_count;
+    image.block_size = EXT2_BLOCK_SIZE(&super);
+    image.blocks_per_group = super.s_blocks_per_group;
+    image.inodes_per_group = super.s_inodes_per_group;
+
+    image.block_usage = std::vector<bool>(image.filesystem_size / image.block_size);
+    image.block_usage[0] = true;
+
+    // check if correct magick number
+    return 0;
+}

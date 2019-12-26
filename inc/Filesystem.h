@@ -17,18 +17,19 @@
 const uint32_t ROOT_INODE_I = 2;
 
 class Filesystem {
-public:
+private:
     FilesystemImage image{};
     std::vector<BlockGroup> block_groups;
 
     std::unordered_map<uint32_t, INode> inodes;
-    std::vector<std::string> errors;
-
     ext2_inode getInode(uint32_t i);
     void createFilesystemTree(INode& directory);
+    int readSuperBlock();
 
 public:
-    Filesystem(std::string path);
+    std::vector<std::string> errors;
+
+    explicit Filesystem(std::string path);
 
     friend std::ostream& operator<<(std::ostream& out, Filesystem& fs);
     std::string getAllErrors();

@@ -10,8 +10,10 @@ int main(int argc, char** argv) {
 
     Filesystem fs{argv[1]};
 
-    std::cout << fs << std::endl << std::endl;
-    std::cout << fs.fileTreeString() << std::endl;
+    if (fs.errors.empty()){
+        std::cout << fs << std::endl << std::endl;
+        std::cout << fs.fileTreeString() << std::endl;
+    }
     std::cout << fs.getAllErrors() << std::endl;
 
     return 0;

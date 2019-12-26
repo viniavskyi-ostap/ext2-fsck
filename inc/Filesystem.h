@@ -17,7 +17,7 @@
 const uint32_t ROOT_INODE_I = 2;
 
 class Filesystem {
-private:
+public:
     FilesystemImage image{};
     std::vector<BlockGroup> block_groups;
     std::vector<ext2_group_desc> block_group_descriptions;

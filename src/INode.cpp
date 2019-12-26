@@ -24,7 +24,7 @@ INode::INode(FilesystemImage& image, ext2_inode inode, unsigned int inode_i):
     for (unsigned int block : blocks) {
         if (block >= image.blocks_count) {
             errors.push_back("INode referencing invalid block " + std::to_string(block));
-//            return;
+            return;
         }
     }
 
@@ -33,7 +33,7 @@ INode::INode(FilesystemImage& image, ext2_inode inode, unsigned int inode_i):
             errors.push_back("Referencing already used block " + std::to_string(block));
         image.block_usage[block] = true;
     }
-    // TODO understand this (the lost+fond takes one extra block for some reason)
+    // TODO understand this (the lost+found takes one extra block for some reason)
     if (inode_i == 11) {
         image.block_usage[blocks[blocks.size() - 1] + 1] = true;
     }
@@ -131,10 +131,8 @@ void INode::readDirectory(FilesystemImage& image) {
 
     ext2_dir_entry_2 entry;
     while(true) {
-        if (inside_offset >= image.block_size) {
-            ++block_i;
-            if (block_i >= blocks.size()) return;
-        }
+        if (inside_offset >= image.block_size) ++block_i;
+        if (block_i >= blocks.size()) return;
 
         image.istream.seekg(blocks[block_i] * image.block_size + inside_offset, std::ios::beg);
         image.istream.read((char *) &entry.inode, sizeof(entry.inode));

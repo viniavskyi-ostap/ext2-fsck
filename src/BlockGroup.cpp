@@ -43,8 +43,8 @@ image(image), block_group_i(i)
 ext2_inode BlockGroup::getInode(uint32_t i) {
     if (!errors.empty()) throw InvalidINode("Tried to access INode " + std::to_string(i) + " in a broken group");
 
-    ext2_inode inode{};
-    image.istream.seekg(inode_table_i * image.block_size + sizeof(ext2_inode) * ((i - 1) % image.inodes_per_group));
+    ext2_inode inode;
+    image.istream.seekg(inode_table_i * image.block_size + sizeof(ext2_inode) * ((i - 1) % image.inodes_per_group), std::ios::beg);
     image.istream.read((char *) &inode, sizeof(inode));
     return inode;
 }

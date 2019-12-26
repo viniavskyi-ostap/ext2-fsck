@@ -12,7 +12,6 @@ void Filesystem::createFilesystemTree(INode& directory) {
     // recursive function to read the inodes and blocks of filesystem
     if (!directory.errors.empty()) return;
     if (directory.type != DIRECTORY) return;
-
     directory.readDirectory(image);
 
     for (auto &child: directory.children) {
@@ -22,7 +21,6 @@ void Filesystem::createFilesystemTree(INode& directory) {
         try {
             ext2_inode ext2Inode = getInode(inode_i);
 
-            std::cout << std::get<0>(child) << file_type_names[get_file_type(ext2Inode)] << std::endl;
             inodes[inode_i] = INode(image, ext2Inode, inode_i);
             INode& inode = inodes[inode_i];
 
@@ -36,7 +34,7 @@ void Filesystem::createFilesystemTree(INode& directory) {
 
 Filesystem::Filesystem(std::string path) {
     // Open the filesystem as file
-    image.istream = std::ifstream{path, std::ios::binary};
+    image.istream = std::ifstream{path, std::ios::binary | std::ios::in};
 
     // Save the size of the filesystem
     image.istream.seekg(0, std::ios::end);
@@ -55,9 +53,11 @@ Filesystem::Filesystem(std::string path) {
         for (uint64_t i = 1; i < groups_count; ++i) {
             block_groups.emplace_back(image, i);
         }
+        if (!block_groups[0].errors.empty()) {
+            errors.push_back("The filesystem cannot be read.");
+            return;
+        }
 
-        if (!block_groups[0].errors.empty())
-            throw std::runtime_error("The filesystem cannot be read.");
         // Root folder
         inodes[ROOT_INODE_I] = INode{image, getInode(ROOT_INODE_I), 2};
         // Recursively add all the inodes

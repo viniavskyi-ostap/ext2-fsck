@@ -5,7 +5,7 @@ image(image), block_group_i(i)
 {
     ext2_group_desc group_desc;
 
-    uint32_t group_desc_offset = std::ceil((BOOT_SIZE + sizeof(ext2_super_block)) / image.block_size) * image.block_size +
+    uint32_t group_desc_offset = std::ceil(double(BOOT_SIZE + sizeof(ext2_super_block)) / image.block_size) * image.block_size +
             sizeof(ext2_group_desc) * i;
 
     if (group_desc_offset + sizeof(group_desc) > image.filesystem_size) {
@@ -38,6 +38,17 @@ image(image), block_group_i(i)
 
     image.block_usage[block_bitmap_i] = true;
     image.block_usage[inode_bitmap_i] = true;
+
+    // DEBUG read inodes
+    std::vector<ext2_inode> inodes(30);
+    image.istream.seekg(inode_table_i * image.block_size, std::ios::beg);
+    for (auto& inode: inodes) {
+        image.istream.read((char*) &inode, sizeof(ext2_inode));
+    }
+
+    for (size_t i = 0; i < inodes.size(); ++i) {
+        std::cout << i + 1 << " " << inodes[i].i_size << std::endl;
+    }
 }
 
 ext2_inode BlockGroup::getInode(uint32_t i) {
@@ -53,7 +64,7 @@ void BlockGroup::additionalFieldsCheck() {
     if (!errors.empty()) return;
     ext2_group_desc group_desc;
 
-    uint32_t group_desc_offset = std::ceil((BOOT_SIZE + sizeof(ext2_super_block)) / image.block_size) * image.block_size +
+    uint32_t group_desc_offset = std::ceil(double(BOOT_SIZE + sizeof(ext2_super_block)) / image.block_size) * image.block_size +
                                  sizeof(ext2_group_desc) * block_group_i;
     image.istream.seekg(group_desc_offset, std::ios::beg);
     image.istream.read((char*) &group_desc, sizeof(group_desc));

@@ -80,7 +80,7 @@ std::ostream& operator<<(std::ostream& out, Filesystem& fs) {
     out << "\tblocks number: " << fs.image.blocks_count << std::endl;
     out << "\tblocks per group: " << fs.image.blocks_per_group << std::endl;
     out << "\tgroups number: " << fs.block_groups.size() << std::endl;
-    out << "\tinode table size in blocks: " << fs.image.inodes_per_group * sizeof(ext2_inode) / fs.image.block_size << std::endl;
+    out << "\tinodes per group: " << fs.image.inodes_per_group << std::endl;
     out << "]";
     return out;
 }
@@ -163,7 +163,7 @@ int Filesystem::readSuperBlock(){
     image.inodes_per_group = super.s_inodes_per_group;
     image.reserved_group_description_blocks = super.s_reserved_gdt_blocks;
 
-    image.inode_usage = std::vector<bool>(std::ceil(image.filesystem_size / image.inodes_per_group) * image.inodes_per_group);
+    image.inode_usage = std::vector<bool>(std::ceil((double) image.filesystem_size / image.inodes_per_group) * image.inodes_per_group);
     // First 11 inodes are marked as reserved
     for (uint32_t i = 0; i < 10; ++i) image.inode_usage[i] = true;
     image.inode_usage[1] = false;
@@ -196,19 +196,3 @@ void Filesystem::initBlockUsageTable() {
     }
 }
 
-int Filesystem::readBlockGroupTable() {
-    uint32_t groups_count = std::ceil(image.blocks_count) / image.blocks_per_group;
-    block_group_descriptions = std::vector<ext2_group_desc>(groups_count);
-
-    if (BOOT_SIZE + image.block_size + sizeof(ext2_group_desc) * groups_count > image.filesystem_size) {
-        errors.emplace_back("Groups description table out of filesystem");
-        return -1;
-    }
-
-    image.istream.seekg(BOOT_SIZE + image.block_size, std::ios::beg);
-    for (uint32_t i = 0; i < groups_count; ++i) {
-        image.istream.read((char *) &block_group_descriptions[i], sizeof(ext2_group_desc));
-    }
-
-    return 0;
-}

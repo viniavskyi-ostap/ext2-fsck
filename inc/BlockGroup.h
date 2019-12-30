@@ -4,7 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <fstream>
-#include <ext2fs/ext2_fs.h>
+#include <ext2fs/ext2fs.h>
 #include "FilesystemImage.h"
 #include "FilesystemErrors.h"
 #include <iostream>

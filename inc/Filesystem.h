@@ -1,7 +1,7 @@
 #ifndef EXT2_FSCK_FIESYSTEM_H
 #define EXT2_FSCK_FIESYSTEM_H
 
-#include <ext2fs/ext2_fs.h>
+#include <ext2fs/ext2fs.h>
 #include <fstream>
 #include <vector>
 #include <cmath>

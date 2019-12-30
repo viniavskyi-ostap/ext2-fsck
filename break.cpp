@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "Filesystem.h"
+#include "fstream64.h"
 
 
 int main() {
@@ -32,25 +33,25 @@ int main() {
 //    inode.i_block[0] = 0;
 //    inode.i_block[1] = 1;
 
-    std::fstream ostream{"../file3", std::ios::binary | std::ios::out};
-    char* buffer = new char[offset];
-    fs.image.istream.seekg(0);
-    fs.image.istream.read(buffer, offset);
-    ostream.write(buffer, offset);
-    delete[] buffer;
+    fstream64 ostream{"../file3", fstream64::WRITE};
+//    char* buffer = new char[offset];
+//    fs.image.istream.seekg(0);
+//    fs.image.istream.read(buffer, offset);
+//    ostream.write(buffer, offset);
+//    delete[] buffer;
 
+    ostream.seek(offset);
     ostream.write((char*) &inode, sizeof(inode));
 
-    fs.image.istream.seekg(0, std::ios::end);
-    uint32_t size = fs.image.istream.tellg();
-    offset += sizeof(ext2_inode);
-    buffer = new char[size - offset];
-    fs.image.istream.seekg(offset);
-    fs.image.istream.read(buffer, size - offset);
-    ostream.write(buffer, size - offset);
-    delete[] buffer;
+//    fs.image.istream.seekg(0, std::ios::end);
+//    uint32_t size = fs.image.istream.tellg();
+//    offset += sizeof(ext2_inode);
+//    buffer = new char[size - offset];
+//    fs.image.istream.seekg(offset);
+//    fs.image.istream.read(buffer, size - offset);
+//    ostream.write(buffer, size - offset);
+//    delete[] buffer;
 
-    ostream.close();
     std::cout << "Successfully broke your filesystem!)" << std::endl;
 
     return 0;

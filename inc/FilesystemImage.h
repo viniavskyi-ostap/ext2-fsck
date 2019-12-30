@@ -13,6 +13,7 @@ struct FilesystemImage {
     uint64_t blocks_count;
     uint64_t block_size;
     uint64_t blocks_per_group;
+    uint32_t inode_size;
     uint32_t inodes_per_group;
     uint32_t reserved_group_description_blocks;
 

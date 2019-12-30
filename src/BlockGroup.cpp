@@ -17,7 +17,7 @@ image(image), block_group_i(i)
     // assigning all used by this group blocks (1 super block and 1 group description)
 
     inode_table_i = group_desc.bg_inode_table;
-    inode_table_size = (image.inodes_per_group * sizeof(ext2_inode)) / image.block_size;
+    inode_table_size = (image.inodes_per_group * image.inode_size) / image.block_size;
     if (inode_table_i + inode_table_size >= image.blocks_count) {
         errors.push_back("Inode-table is in invalid block " + std::to_string(inode_table_i));
         return;
@@ -38,24 +38,13 @@ image(image), block_group_i(i)
 
     image.block_usage[block_bitmap_i] = true;
     image.block_usage[inode_bitmap_i] = true;
-
-    // DEBUG read inodes
-    std::vector<ext2_inode> inodes(30);
-    image.istream.seekg(inode_table_i * image.block_size, std::ios::beg);
-    for (auto& inode: inodes) {
-        image.istream.read((char*) &inode, sizeof(ext2_inode));
-    }
-
-    for (size_t i = 0; i < inodes.size(); ++i) {
-        std::cout << i + 1 << " " << inodes[i].i_size << std::endl;
-    }
 }
 
 ext2_inode BlockGroup::getInode(uint32_t i) {
     if (!errors.empty()) throw InvalidINode("Tried to access INode " + std::to_string(i) + " in a broken group");
 
     ext2_inode inode;
-    image.istream.seekg(inode_table_i * image.block_size + sizeof(ext2_inode) * ((i - 1) % image.inodes_per_group), std::ios::beg);
+    image.istream.seekg(inode_table_i * image.block_size + image.inode_size * ((i - 1) % image.inodes_per_group), std::ios::beg);
     image.istream.read((char *) &inode, sizeof(inode));
     return inode;
 }

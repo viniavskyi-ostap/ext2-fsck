@@ -160,6 +160,7 @@ int Filesystem::readSuperBlock(){
     image.blocks_count = super.s_blocks_count;
     image.block_size = EXT2_BLOCK_SIZE(&super);
     image.blocks_per_group = super.s_blocks_per_group;
+    image.inode_size = super.s_inode_size;
     image.inodes_per_group = super.s_inodes_per_group;
     image.reserved_group_description_blocks = super.s_reserved_gdt_blocks;
 

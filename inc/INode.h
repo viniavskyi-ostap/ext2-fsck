@@ -25,9 +25,9 @@ file_type get_file_type(const ext2_inode& inode);
 
 class INode {
 public:
-    unsigned int inode_i;
+    fs_t inode_i;
     ext2_inode inode;
-    std::vector<uint32_t> blocks;
+    std::vector<fs_t> blocks;
     file_type type = UNKNOWN;
 
     std::vector<std::string> errors;
@@ -35,12 +35,12 @@ public:
     using dir_entry_t = std::tuple<std::string, uint32_t>;
     std::vector<dir_entry_t> children;
 
-    void getIndirectBlocks(FilesystemImage& image, std::vector<uint32_t>& blocks, uint32_t block, uint32_t& blocks_found, uint32_t& block_count, int depth=1);
-    std::vector<uint32_t> getBlocks(FilesystemImage& image);
+    void getIndirectBlocks(FilesystemImage& image, std::vector<fs_t>& blocks, fs_t block, fs_t& blocks_found, fs_t& block_count, int depth=1);
+    std::vector<fs_t> getBlocks(FilesystemImage& image);
 
 public:
     INode() = default;
-    INode(FilesystemImage& image, ext2_inode inode, unsigned int inode_i);
+    INode(FilesystemImage& image, ext2_inode inode, fs_t inode_i);
 
     friend std::ostream& operator<<(std::ostream& out, INode& file);
     std::string shortInfo();

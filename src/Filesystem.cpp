@@ -1,7 +1,7 @@
 #include "Filesystem.h"
 
-ext2_inode Filesystem::getInode(uint32_t i) {
-    uint32_t group_i = i / image.inodes_per_group;
+ext2_inode Filesystem::getInode(fs_t i) {
+    fs_t group_i = i / image.inodes_per_group;
     if (group_i >= block_groups.size())
         throw InvalidINode("Tried to access INode in unexisting group " + std::to_string(group_i));
 
@@ -34,11 +34,10 @@ void Filesystem::createFilesystemTree(INode& directory) {
 
 Filesystem::Filesystem(std::string path) {
     // Open the filesystem as file
-    image.istream = std::ifstream{path, std::ios::binary | std::ios::in};
+    image.istream = biofs(path);
 
     // Save the size of the filesystem
-    image.istream.seekg(0, std::ios::end);
-    image.filesystem_size = image.istream.tellg();
+    image.filesystem_size = image.istream.size();
 
     if (readSuperBlock() == 0) {
         initBlockUsageTable();
@@ -49,12 +48,12 @@ Filesystem::Filesystem(std::string path) {
         // Save the size of the filesystem
         // TODO perform other super block checks
 
-        uint64_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
-        for (uint64_t i = 1; i < groups_count; ++i) {
+        fs_t groups_count = fs_ceil_division(image.blocks_count, image.blocks_per_group);
+        for (fs_t i = 1; i < groups_count; ++i) {
             block_groups.emplace_back(image, i);
         }
         if (!block_groups[0].errors.empty()) {
-            errors.push_back("The filesystem cannot be read.");
+            errors.emplace_back("The filesystem cannot be read.");
             return;
         }
 
@@ -63,12 +62,12 @@ Filesystem::Filesystem(std::string path) {
         // Recursively add all the inodes
         createFilesystemTree(inodes[ROOT_INODE_I]);
 
-        for (size_t i = 0; i < image.block_usage.size(); ++i) {
-            std::cout << image.block_usage[i];
-        }
-        std::cout << std::endl;
+//        for (size_t i = 0; i < image.block_usage.size(); ++i) {
+//            std::cout << image.block_usage[i];
+//        }
+//        std::cout << std::endl;
 
-        for (uint64_t i = 0; i< groups_count; ++i) {
+        for (fs_t i = 0; i< groups_count; ++i) {
             block_groups[i].additionalFieldsCheck();
         }
     }
@@ -111,7 +110,7 @@ std::string Filesystem::getAllErrors() {
     return out.str();
 }
 
-void Filesystem::__fileTreeStringOneDepth(INode& directory, int depth, std::ostringstream& out, std::unordered_set<uint32_t>& usedMap) {
+void Filesystem::__fileTreeStringOneDepth(INode& directory, int depth, std::ostringstream& out, std::unordered_set<fs_t>& usedMap) {
     for (auto child : directory.children) {
         if (usedMap.count(std::get<1>(child))) continue;
         if (!inodes.count(std::get<1>(child))) continue;
@@ -132,7 +131,7 @@ std::string Filesystem::fileTreeString(INode& directory) {
     if (directory.type != DIRECTORY)
         return out.str();
 
-    std::unordered_set<uint32_t> usedMap;
+    std::unordered_set<fs_t> usedMap;
     __fileTreeStringOneDepth(directory, 0, out, usedMap);
     return out.str();
 }
@@ -149,7 +148,7 @@ int Filesystem::readSuperBlock(){
         return -1;
     }
 
-    image.istream.seekg(BOOT_SIZE, std::ios::beg);
+    image.istream.seek(BOOT_SIZE);
     image.istream.read((char *) &super, sizeof(super));
 
     if (super.s_magic != EXT2_SUPER_MAGIC){
@@ -164,9 +163,9 @@ int Filesystem::readSuperBlock(){
     image.inodes_per_group = super.s_inodes_per_group;
     image.reserved_group_description_blocks = super.s_reserved_gdt_blocks;
 
-    image.inode_usage = std::vector<bool>(std::ceil((double) image.filesystem_size / image.inodes_per_group) * image.inodes_per_group);
+    image.inode_usage = std::vector<bool>(fs_align(image.filesystem_size, image.inodes_per_group));
     // First 11 inodes are marked as reserved
-    for (uint32_t i = 0; i < 10; ++i) image.inode_usage[i] = true;
+    for (fs_t i = 0; i < 10; ++i) image.inode_usage[i] = true;
     image.inode_usage[1] = false;
 
     // check if correct magick number
@@ -176,19 +175,19 @@ int Filesystem::readSuperBlock(){
 void Filesystem::initBlockUsageTable() {
     image.block_usage = std::vector<bool>(image.filesystem_size / image.block_size);
 
-    uint32_t groups_count = std::ceil((double) image.blocks_count / image.blocks_per_group);
-    uint32_t group_desc_blocks = std::ceil(double(sizeof(ext2_group_desc) * groups_count) / image.block_size);
+    fs_t groups_count = fs_ceil_division(image.blocks_count, image.blocks_per_group);
+    fs_t group_desc_blocks = fs_ceil_division(sizeof(ext2_group_desc) * groups_count, image.block_size);
 
     // mark the boot
     image.block_usage[0] = true;
-    uint32_t boot_offset = (image.block_size <= BOOT_SIZE) ? 1 : 0;
+    fs_t boot_offset = (image.block_size <= BOOT_SIZE) ? 1 : 0;
 
     // iterating through 0, 1, 3 ^ n, 5 ^ n, 7 ^ n
-    for (auto num: std::vector<uint32_t>{0, 1, 3, 5, 7}) {
-        uint32_t i = num;
+    for (auto num: std::vector<fs_t>{0, 1, 3, 5, 7}) {
+        fs_t i = num;
         while (i < groups_count) {
             // mark the super block, the group description table and reserved gdt blocks
-            for (uint32_t j = 0; j <= group_desc_blocks + image.reserved_group_description_blocks; ++j)
+            for (fs_t j = 0; j <= group_desc_blocks + image.reserved_group_description_blocks; ++j)
                 image.block_usage[image.blocks_per_group * i + boot_offset + j] = true;
 
             if (num == 0 || num == 1) break;

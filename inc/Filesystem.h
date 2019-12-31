@@ -22,8 +22,8 @@ public:
     std::vector<BlockGroup> block_groups;
     std::vector<ext2_group_desc> block_group_descriptions;
 
-    std::unordered_map<uint32_t, INode> inodes;
-    ext2_inode getInode(uint32_t i);
+    std::unordered_map<fs_t, INode> inodes;
+    ext2_inode getInode(fs_t i);
     void createFilesystemTree(INode& directory);
     int readSuperBlock();
     void initBlockUsageTable();
@@ -37,7 +37,7 @@ public:
     friend std::ostream& operator<<(std::ostream& out, Filesystem& fs);
     std::string getAllErrors();
 
-    void __fileTreeStringOneDepth(INode& directory, int depth, std::ostringstream& out, std::unordered_set<uint32_t>& usedMap);
+    void __fileTreeStringOneDepth(INode& directory, int depth, std::ostringstream& out, std::unordered_set<fs_t>& usedMap);
     std::string fileTreeString(INode& directory);
     std::string fileTreeString();
 

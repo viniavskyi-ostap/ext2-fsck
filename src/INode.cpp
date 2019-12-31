@@ -16,12 +16,12 @@ file_type get_file_type(const ext2_inode& inode) {
     }
 }
 
-INode::INode(FilesystemImage& image, ext2_inode inode, unsigned int inode_i):
+INode::INode(FilesystemImage& image, ext2_inode inode, fs_t inode_i):
         inode(inode), inode_i(inode_i)
 {
     blocks = getBlocks(image);
 
-    for (unsigned int block : blocks) {
+    for (fs_t block : blocks) {
         if (block >= image.blocks_count) {
             errors.push_back("INode referencing invalid block " + std::to_string(block));
             return;
@@ -43,10 +43,10 @@ INode::INode(FilesystemImage& image, ext2_inode inode, unsigned int inode_i):
     type = get_file_type(inode);
 }
 
-std::vector<uint32_t> INode::getBlocks(FilesystemImage& image) {
-    uint32_t block_count = std::ceil((double) inode.i_size / image.block_size);
-    uint32_t blocks_found = 0;
-    std::vector<uint32_t> blocks(block_count);
+std::vector<fs_t> INode::getBlocks(FilesystemImage& image) {
+    fs_t block_count = fs_ceil_division(inode.i_size, image.block_size);
+    fs_t blocks_found = 0;
+    std::vector<fs_t> blocks(block_count);
 
     for (blocks_found = 0; blocks_found < block_count && blocks_found < EXT2_NDIR_BLOCKS; ++blocks_found) {
         blocks[blocks_found] = inode.i_block[blocks_found];
@@ -59,7 +59,7 @@ std::vector<uint32_t> INode::getBlocks(FilesystemImage& image) {
     return blocks;
 }
 
-void INode::getIndirectBlocks(FilesystemImage& image, std::vector<uint32_t>& blocks, uint32_t block, uint32_t& blocks_found, uint32_t& block_count, int depth) {
+void INode::getIndirectBlocks(FilesystemImage& image, std::vector<fs_t>& blocks, fs_t block, fs_t& blocks_found, fs_t& block_count, int depth) {
     if (blocks_found >= block_count) return;
 
     // checking the blocks
@@ -72,11 +72,11 @@ void INode::getIndirectBlocks(FilesystemImage& image, std::vector<uint32_t>& blo
 
     image.block_usage[block] = true;
 
-    for (int i = 0; i < image.block_size / sizeof(uint32_t); ++i) {
+    for (fs_t i = 0; i < image.block_size / sizeof(uint32_t); ++i) {
         if (blocks_found >= block_count) return;
 
         uint32_t value;
-        image.istream.seekg(block * image.block_size + i * sizeof(uint32_t), std::ios::beg);
+        image.istream.seek(block * image.block_size + i * sizeof(uint32_t), biofs::beg);
         image.istream.read((char *) &value, sizeof(value));
 
         if (depth == 1) {
@@ -125,8 +125,8 @@ std::string INode::shortInfo() {
 void INode::readDirectory(FilesystemImage& image) {
     children = {};
 
-    uint32_t block_i = 0;
-    uint32_t inside_offset = 0;
+    fs_t block_i = 0;
+    fs_t inside_offset = 0;
     char filename[EXT2_NAME_LEN + 1];
 
     ext2_dir_entry_2 entry;
@@ -134,11 +134,8 @@ void INode::readDirectory(FilesystemImage& image) {
         if (inside_offset >= image.block_size) ++block_i;
         if (block_i >= blocks.size()) return;
 
-        image.istream.seekg(blocks[block_i] * image.block_size + inside_offset, std::ios::beg);
-        image.istream.read((char *) &entry.inode, sizeof(entry.inode));
-        image.istream.read((char *) &entry.rec_len, sizeof(entry.rec_len));
-        image.istream.read((char *) &entry.name_len, sizeof(entry.name_len));
-        image.istream.read((char *) &entry.file_type, sizeof(entry.file_type));
+        image.istream.seek(blocks[block_i] * image.block_size + inside_offset, biofs::beg);
+        image.istream >> entry.inode >> entry.rec_len >> entry.name_len >> entry.file_type;
         image.istream.read((char *) &entry.name, entry.name_len);
 
         std::copy(entry.name, entry.name + entry.name_len, filename);

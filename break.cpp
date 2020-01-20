@@ -33,7 +33,7 @@ int main() {
 //    inode.i_block[0] = 0;
 //    inode.i_block[1] = 1;
 
-    biofs ostream{"../file3", biofs::WRITE};
+    biofs ostream{"../file2", biofs::WRITE};
 //    char* buffer = new char[offset];
 //    fs.image.istream.seek(0);
 //    fs.image.istream.read(buffer, offset);

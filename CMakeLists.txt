@@ -13,6 +13,3 @@ target_link_libraries(ext2-fsck filesystem)
 
 add_executable(ext2-fsbreak break.cpp)
 target_link_libraries(ext2-fsbreak filesystem biofs)
-
-add_executable(life_is_awesome life_is_awesome.cpp)
-target_link_libraries(life_is_awesome biofs)

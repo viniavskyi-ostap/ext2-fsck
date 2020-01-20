@@ -1,3 +1,6 @@
+#ifndef EXT2_FSCK_BIOFS_H
+#define EXT2_FSCK_BIOFS_H
+
 #include <unistd.h>
 #include <string>
 #include <sys/types.h>
@@ -69,3 +72,5 @@ public:
     template<typename T>
     biofs& operator<<(T*& data) = delete;
 };
+
+#endif

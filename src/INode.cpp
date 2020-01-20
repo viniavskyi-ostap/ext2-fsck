@@ -2,23 +2,30 @@
 #include <iostream>
 #include <sstream>
 
-file_type get_file_type(const ext2_inode& inode) {
+file_type get_file_type(const ext2_inode &inode) {
     int mode = inode.i_mode >> 12;
-    switch(mode) {
-        case 1: return FIFO;
-        case 2: return CHAR_DEVICE;
-        case 4: return DIRECTORY;
-        case 6: return BLOCK_DEVICE;
-        case 8: return REGULAR;
-        case 10: return SYMLINK;
-        case 12: return SOCKET;
-        default: return UNKNOWN;
+    switch (mode) {
+        case 1:
+            return FIFO;
+        case 2:
+            return CHAR_DEVICE;
+        case 4:
+            return DIRECTORY;
+        case 6:
+            return BLOCK_DEVICE;
+        case 8:
+            return REGULAR;
+        case 10:
+            return SYMLINK;
+        case 12:
+            return SOCKET;
+        default:
+            return UNKNOWN;
     }
 }
 
-INode::INode(FilesystemImage& image, ext2_inode inode, fs_t inode_i):
-        inode(inode), inode_i(inode_i)
-{
+INode::INode(FilesystemImage &image, ext2_inode inode, fs_t inode_i) :
+        inode(inode), inode_i(inode_i) {
     blocks = getBlocks(image);
 
     for (fs_t block : blocks) {
@@ -43,7 +50,7 @@ INode::INode(FilesystemImage& image, ext2_inode inode, fs_t inode_i):
     type = get_file_type(inode);
 }
 
-std::vector<fs_t> INode::getBlocks(FilesystemImage& image) {
+std::vector<fs_t> INode::getBlocks(FilesystemImage &image) {
     fs_t block_count = fs_ceil_division(inode.i_size, image.block_size);
     fs_t blocks_found = 0;
     std::vector<fs_t> blocks(block_count);
@@ -59,7 +66,8 @@ std::vector<fs_t> INode::getBlocks(FilesystemImage& image) {
     return blocks;
 }
 
-void INode::getIndirectBlocks(FilesystemImage& image, std::vector<fs_t>& blocks, fs_t block, fs_t& blocks_found, fs_t& block_count, int depth) {
+void INode::getIndirectBlocks(FilesystemImage &image, std::vector<fs_t> &blocks, fs_t block, fs_t &blocks_found,
+                              fs_t &block_count, int depth) {
     if (blocks_found >= block_count) return;
 
     // checking the blocks
@@ -83,12 +91,12 @@ void INode::getIndirectBlocks(FilesystemImage& image, std::vector<fs_t>& blocks,
             blocks[blocks_found] = value;
             ++blocks_found;
         } else {
-            getIndirectBlocks(image, blocks, value, blocks_found, block_count, depth-1);
+            getIndirectBlocks(image, blocks, value, blocks_found, block_count, depth - 1);
         }
     }
 }
 
-std::ostream& operator<<(std::ostream& out, INode& file) {
+std::ostream &operator<<(std::ostream &out, INode &file) {
     out << "[INode" << std::endl;
     out << "\tinode number: " << file.inode_i << std::endl;
     out << "\ttype: " << file_type_names[file.type] << std::endl;
@@ -122,20 +130,29 @@ std::string INode::shortInfo() {
     return o.str();
 }
 
-void INode::readDirectory(FilesystemImage& image) {
+void INode::readDirectory(FilesystemImage &image) {
     children = {};
 
     fs_t block_i = 0;
     fs_t inside_offset = 0;
     char filename[EXT2_NAME_LEN + 1];
 
-    ext2_dir_entry_2 entry;
-    while(true) {
-        if (inside_offset >= image.block_size) ++block_i;
+    ext2_dir_entry_2 entry{};
+    while (true) {
+        if (inside_offset >= image.block_size) {
+            inside_offset = 0;
+            ++block_i;
+        }
         if (block_i >= blocks.size()) return;
 
         image.istream.seek(blocks[block_i] * image.block_size + inside_offset, biofs::beg);
         image.istream >> entry.inode >> entry.rec_len >> entry.name_len >> entry.file_type;
+        if (entry.rec_len <
+            sizeof(entry.rec_len) + sizeof(entry.file_type) + sizeof(entry.inode) + sizeof(entry.name_len)) {
+            errors.push_back("Incorrect rec_len value: " + std::to_string(entry.rec_len) + " in directory inode " +
+                             std::to_string(inode_i));
+            return;
+        }
         image.istream.read((char *) &entry.name, entry.name_len);
 
         std::copy(entry.name, entry.name + entry.name_len, filename);

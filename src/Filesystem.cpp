@@ -163,7 +163,7 @@ int Filesystem::readSuperBlock(){
     image.inodes_per_group = super.s_inodes_per_group;
     image.reserved_group_description_blocks = super.s_reserved_gdt_blocks;
 
-    image.inode_usage = std::vector<bool>(fs_align(image.filesystem_size, image.inodes_per_group));
+    image.inode_usage = std::vector<bool>(fs_ceil_division(image.filesystem_size, image.blocks_per_group * image.block_size) * image.inodes_per_group);
     // First 11 inodes are marked as reserved
     for (fs_t i = 0; i < 10; ++i) image.inode_usage[i] = true;
     image.inode_usage[1] = false;

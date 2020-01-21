@@ -2,6 +2,8 @@
 #include <stdexcept>
 #include <iostream>
 #include <cstring>
+#include <linux/fs.h>
+#include <sys/ioctl.h>
 
 
 biofs::biofs(const std::string path, uint flags) {
@@ -21,7 +23,13 @@ biofs::biofs(const std::string path, uint flags) {
         errno = 0;
     }
 
-    file_size = stat_result.st_size;
+    if (stat_result.st_mode & __S_IFBLK) {
+        ioctl(file, BLKGETSIZE, &file_size);
+        file_size *= 512;
+        std::cout << file_size << std::endl;
+    } else {
+        file_size = stat_result.st_size;
+    }
 }
 
 biofs::~biofs() {
